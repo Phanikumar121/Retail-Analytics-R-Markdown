@@ -1,0 +1,312 @@
+---
+title: "Retail Case Study"
+author: "Phani Kumar"
+date: "10/23/2019"
+output:
+  html_document: default
+---
+
+```{r}
+library(rmarkdown)
+library(dplyr)
+library(ggplot2)
+library(flipTime)
+library(lubridate)
+library(tidyr)
+```
+
+
+```{r}
+
+Customer <- read.csv("C:\\Users\\PHANI KUMAR\\Desktop\\Retail Case Study\\Customer.csv")
+Transactions <- read.csv("C:\\Users\\PHANI KUMAR\\Desktop\\Retail Case Study\\Transactions.csv")
+prod_cat_info <- read.csv("C:\\Users\\PHANI KUMAR\\Desktop\\Retail Case Study\\prod_cat_info.csv")
+
+```
+
+
+```{r}
+#Question 1
+
+sample <- dplyr::left_join(Transactions , Customer , by = "cust_id")
+
+Customer_Final <- dplyr::left_join(sample,prod_cat_info , by = "prod_cat_code")
+```
+
+
+```{r}
+
+#Question 2
+
+#2.A--Get the corresponding data types
+str(Customer_Final)
+
+sapply(Customer_Final, class)
+
+#2.B--top 10 and bottom 10 observations
+
+top_10 <- head(Customer_Final,10)
+
+bottom_10 <- tail(Customer_Final,10)
+top_10
+bottom_10
+
+#2.C--Five number summary for numeric variables
+numeric_vars <- dplyr::select_if(Customer_Final,is.numeric)
+ summary(numeric_vars)
+
+#function to treat missing values
+
+miss_treat = function(x){
+  x[is.na(x)] = mean(x,na.rm=T)
+  return(x)
+}
+
+numeric_vars = data.frame(apply(numeric_vars, 2, FUN=miss_treat))
+
+summary(numeric_vars)
+
+#2.D--Frequency table for categorical variables
+
+Customer_Final%>%group_by(prod_cat)%>%summarize(Frequency = n())
+
+Customer_Final%>%group_by(prod_subcat)%>%summarize(Frequency = n())
+
+ft_prod_subcat <- Customer_Final%>%group_by(prod_subcat)%>%summarize(Frequency = n())
+
+Customer_Final%>%group_by(Store_type)%>%summarize(Frequency = n())
+
+Customer_Final%>%group_by(Gender)%>%summarize(Frequency = n())
+
+ft_Gender <- Customer_Final%>%group_by(Gender)%>%summarize(Frequency = n())
+
+```
+
+
+```{r}
+
+#question 3
+
+#histogram for continuous variables.
+
+hist(Customer_Final$Qty,main = "Histogram for QTY",xlab = "QTY" ,
+     border = "blue",col= "yellow",breaks = 6)
+
+
+hist(Customer_Final$Rate,main = "Histogram for Rate",xlab = "Rate" ,
+     border = "blue",col= "green",breaks = 10)
+
+ggplot2::ggplot(Customer_Final, aes(Tax)) + geom_histogram(bins = 5,color = "black",fill = "tomato1")
+
+hist(Customer_Final$total_amt,main = "histogram for total_amt",xlab = "total_amt" ,
+     border = "Black",col= "orange",breaks = 10)
+
+hist(Customer_Final$prod_cat_code,main = "Histogram for prod_cat_code",xlab = "prod_cat_code" ,
+     col= "skyblue",breaks = 5)
+
+qplot(Customer_Final$total_amt,
+      geom="histogram",
+      main = "Histogram for total_amt",border = "blue",col = I("red"))
+
+ggplot2::ggplot(Customer_Final, aes(total_amt)) + geom_histogram(bins = 5,color = "black",fill = "tomato1")
+
+ggplot2::ggplot(Customer_Final,aes(prod_sub_cat_code)) + geom_histogram(bins = 10,color = "darkblue",fill = "lightblue")
+
+ggplot2::ggplot(Customer_Final,aes(cust_id)) + geom_histogram(bins = 6,color = "darkblue",fill = "yellow")
+
+#Frequency bars for categorical variables.
+
+ggplot2::ggplot(Customer_Final,aes(city_code)) + geom_histogram(bins = 10,color = "black",fill = "lightgreen")
+
+ggplot2::ggplot(Customer_Final,aes(Store_type)) + geom_histogram(stat = "count",color = "black",fill = "lightblue")
+
+ggplot2::ggplot(Customer_Final,aes(Gender)) + geom_histogram(stat = "count",color = "black",fill = "orange")
+
+ggplot2::ggplot(Customer_Final,aes(prod_subcat)) + geom_histogram(stat = "count",color = "black",fill = "skyblue")
+
+ggplot2::ggplot(Customer_Final,aes(prod_cat)) + geom_histogram(stat = "count",color = "black",fill = "green")
+
+```
+
+
+````{r}
+
+#Question 4
+#4.A--Calculating the time period of the merged data set
+
+Customer_Final$DOB <- AsDate(Customer_Final$DOB)
+Customer_Final$tran_date <- AsDate(Customer_Final$tran_date)
+
+start_date_of_transaction <- "2011-01-25"
+
+end_date_of_transaction <- "2014-02-28"
+
+time_period <- difftime(end_date_of_transaction,start_date_of_transaction)
+
+time_period
+
+#4.B--count of transaction where totalamt < 0.
+#the below codes give the list and count of transactions where totalamt < 0 
+
+neg_totamt <- dplyr::filter(Customer_Final,total_amt < 0)
+
+dplyr::group_by(neg_totamt,transaction_id)%>%dplyr::summarise(Frequency = n())
+
+```
+
+
+```{r}
+
+#Question 5
+
+#which product categories are more popular among males and females
+
+Customer_Final$Gender[is.na(Customer_Final$Gender)] <- "M"
+
+male_prodcat <- dplyr::filter(Customer_Final, Gender == "M")
+
+count(male_prodcat,prod_cat)
+
+female_prodcat <- dplyr::filter(Customer_Final, Gender == "F")
+
+count(female_prodcat,prod_cat)
+
+#using count function we can compare the frequency of product categories used by males and females.
+#it is clear based on the output that both male and female purchased many books followed by 
+#electronics and home and kitchen respectively.
+
+```
+
+
+```{r}
+#Question 6.Which city code has maximum no of customers and what is their percentage.
+
+Customer_Final$city_code <- miss_treat(Customer_Final$city_code)
+
+q6 <- Customer_Final%>%group_by(city_code)%>%summarize(Frequency = n())
+q6$percentage <- (q6$Frequency/(sum(q6$Frequency)/2))*100
+q6
+
+#City code "4" has the maximum no of customers accounting to 10571 customers i.e 21.3% of the total customers.
+
+```
+
+
+```{r}
+#Question.7--Which store type cells the maximum products by value and quantity.
+
+q7 <- Customer_Final%>%group_by(Store_type)%>%summarize(Frequency = n())
+
+sales_storetype <- 	Customer_Final %>% dplyr::group_by(Store_type) %>% 
+  dplyr::summarize(Sum_TS = sum(total_amt))
+sales_storetype$quantity <- q7$Frequency
+sales_storetype
+
+```
+
+
+```{r}
+#Question.8--Total sales where prod_cat is clothing and electronics and store type is flagshipstores
+
+q8 <- dplyr::filter(Customer_Final,Customer_Final$Store_type == 'Flagship store',Customer_Final$prod_cat == 'Electronics'|Customer_Final$prod_cat == 'Clothing')
+sum(q8$total_amt)
+
+q.8 <- dplyr::group_by(q8,prod_cat,Store_type)%>%dplyr::summarise(Total_amt = sum(total_amt))
+
+q.8
+
+```
+
+
+```{r}
+#Question.9--Total sales for males from electronics category
+
+q9 <- dplyr::filter(Customer_Final,Customer_Final$Gender == "M",Customer_Final$prod_cat == "Electronics")
+
+q.9 <- dplyr::group_by(q9,prod_cat,Gender)%>%dplyr::summarise(Total_amt = sum(total_amt))
+
+q.9
+
+```
+
+
+```{r}
+#Question.10.How many customers have more than 10 unique transactions after removing negative transactions.
+
+#code to remove negative transactions
+
+positive_totamt <- dplyr::filter(Customer_Final,total_amt >= 0)
+
+q10.ex <- positive_totamt%>%group_by(transaction_id,cust_id)%>%dplyr::summarise(Frequency = n())
+
+q10 <- dplyr::filter(q10.ex,Frequency > 10)
+
+q10
+
+#No customer has done more than 10 transactions.
+
+```
+
+
+```{r}
+
+#Question.11.A--calculating amount spend by people between age 25 and 35 for books and electronics category
+
+  calc_age <- function(birthdate,refDate = Sys.Date()){
+    require(lubridate)
+    
+    period <- as.period(interval(birthdate,refDate),unit = "year")
+    period$year
+  }
+
+Customer_Final$age <- calc_age(Customer_Final$DOB)
+
+
+sub8 <- dplyr::filter(Customer_Final,Customer_Final$prod_cat == "Books" | Customer_Final$prod_cat == "Electronics")[,c("cust_id","tran_date","prod_cat","total_amt", "prod_subcat","age")]
+
+sub9 <- dplyr::filter(sub8,sub8$age >=25 & sub8$age<=35)[,
+                                                  c("cust_id","prod_cat","total_amt","prod_subcat","age","tran_date")]
+
+q11.a <- dplyr::group_by(sub9,prod_cat,age)%>%dplyr::summarise(sumof_spend = round(sum(total_amt)))
+
+q11.a
+
+
+#q11.b--for the above customers calculating the spent between 1/Jan/2014 and 1/Mar/2014
+
+sub9$tran_date <- AsDate(sub9$tran_date)
+
+sub9$year <- lubridate::year(sub9$tran_date)
+sub9$month <- lubridate::month(sub9$tran_date)
+sub9$day <- lubridate::day(sub9$tran_date)
+
+sub10 <- dplyr::filter(sub9,sub9$year >=2014 & sub9$month>=1&sub9$day>=1)[,
+                                    c("cust_id","prod_cat","total_amt","prod_subcat","age","tran_date")]
+
+q11.b <- dplyr::group_by(sub10,cust_id)%>%dplyr::summarise(sumof_spend = round(sum(total_amt)))
+
+q11.b
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
